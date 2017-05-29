@@ -2,15 +2,20 @@ package de.android.myapplication;
 
 import android.app.DownloadManager;
 import android.app.Fragment;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 public class DownloadFragment extends Fragment implements View.OnClickListener {
     private DownloadManager mgr = null;
@@ -71,4 +76,73 @@ public class DownloadFragment extends Fragment implements View.OnClickListener {
         v.setEnabled(false);
         query.setEnabled(true);
     }
+
+    private void queryStatus(View v) {
+        Cursor c =
+                mgr.query(new DownloadManager.Query().setFilterById(lastDownload));
+        if (c == null) {
+            Toast.makeText(getActivity(), R.string.download_not_found, Toast.LENGTH_LONG).show();
+        }else {
+            c.moveToFirst();
+            Log.d(getClass().getName(),
+                    "COLUMN_ID: "
+                            + c.getLong(c.getColumnIndex(DownloadManager.COLUMN_ID)));
+            Log.d(getClass().getName(),
+                    "COLUMN_BYTES_DOWNLOADED_SO_FAR: "
+                            + c.getLong(c.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)));
+            Log.d(getClass().getName(),
+                    "COLUMN_LAST_MODIFIED_TIMESTAMP: "
+                            + c.getLong(c.getColumnIndex(DownloadManager.COLUMN_LAST_MODIFIED_TIMESTAMP)));
+            Log.d(getClass().getName(),
+                    "COLUMN_LOCAL_URI: "
+                            + c.getString(c.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)));
+            Log.d(getClass().getName(),
+                    "COLUMN_STATUS: "
+                            + c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS)));
+            Log.d(getClass().getName(),
+                    "COLUMN_REASON: "
+                            + c.getInt(c.getColumnIndex(DownloadManager.COLUMN_REASON)));
+
+            Toast.makeText(getActivity(), statusMessage(c), Toast.LENGTH_LONG)
+                    .show();
+
+            c.close();
+        }
+    }
+
+    private String statusMessage(Cursor c) {
+        String msg = "???";
+        switch (c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS))) {
+            case DownloadManager.STATUS_FAILED:
+                msg = getActivity().getString(R.string.download_failed);
+                break;
+            case DownloadManager.STATUS_PAUSED:
+                msg = getActivity().getString(R.string.download_paused);
+                break;
+            case DownloadManager.STATUS_PENDING:
+                msg = getActivity().getString(R.string.download_pending);
+                break;
+            case DownloadManager.STATUS_RUNNING:
+                msg = getActivity().getString(R.string.download_in_progress);
+                break;
+            case DownloadManager.STATUS_SUCCESSFUL:
+                msg = getActivity().getString(R.string.download_complete);
+                break;
+            default:
+                msg = getActivity().getString(R.string.download_is_nowhere_in_sight);
+                break;
+        }
+        return msg;
+    }
+
+    private BroadcastReceiver onEvent = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context ctxt, Intent i) {
+            if (DownloadManager.ACTION_NOTIFICATION_CLICKED.equals(i.getAction())) {
+                Toast.makeText(ctxt, R.string.hi, Toast.LENGTH_LONG).show();
+            }else {
+                start.setEnabled(true);
+            }
+        }
+    };
 }
